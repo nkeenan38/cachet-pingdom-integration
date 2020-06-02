@@ -1,0 +1,18 @@
+{
+  "name": "nkeenan38/pingdom-cachet-integration",
+  "description": "Map pingdom checks to Cachet components.",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+      {
+          "name": "Nick Keenan",
+          "email": "nkeenan38@gmail.com"
+      }
+  ],
+  "require": {
+      "php": ">=7.0",
+      "vlucas/phpdotenv": "2.4.*",
+      "nkeenan38/phpingdom": "1.0.*",
+      "damianopetrungaro/cachet-sdk": "1.0.*"
+  }
+}
