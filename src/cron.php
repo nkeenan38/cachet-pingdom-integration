@@ -66,13 +66,10 @@ if (!empty($metricsMap)) {
 }
 
 
-// Parse the components mapping
-$componentsMap = array_filter(array_map('extractMap', explode(',', env('COMPONENTS_MAP', ''))), function ($map) {
-    return !empty($map);
-});
-
+// Parse the component rules
+$componentRules = json_decode(env('COMPONENT_RULES', ''));
 // Run the components section only if there are components mapped
-if (!empty($componentsMap)) {
+if (!empty($componentRules)) {
     // Get the checks from pingdom to map the component statuses
     $pingdomChecks = $pingdomClient->getChecks();
 
@@ -80,33 +77,35 @@ if (!empty($componentsMap)) {
     $cachetComponents = ComponentFactory::build($cachetClient);
 
     // Run over all the checks and execute updates if needed
-    foreach ($pingdomChecks as $check) {
-        foreach ($componentsMap as $componentMap) {
-            if ($componentMap['pingdom'] == $check['id']) {
-                $component = $cachetComponents->getComponent($componentMap['cachet']);
-
-                if (empty($component['data']['id'])) {
-                    write("[Component] Skipping Pingdom check:{$componentMap['pingdom']}, because the component could not be found in Cachet.");
-
-                    continue;
-                }
-
-                $cachetStatus  = (int)$component['data']['status'];
-                $pingdomStatus = $check['status'] == 'down' ? 4 : 1;
-
-                if ($cachetStatus === $pingdomStatus) {
-                    write("[Component] Skipping Pingdom check:{$componentMap['pingdom']}, because the status in Cachet is already equal.");
-
-                    continue;
-                }
-
-                write("[Component] Updating Pingdom check:{$componentMap['pingdom']} to Cachet component:{$check['id']} with status:{$check['status']}");
-
-                $cachetComponents->updateComponent($componentMap['cachet'], [
-                    'status' => $check['status'] === 'down' ? 4 : 1,
-                ]);
-            }
+    foreach ($componentRules as $componentId => $rule) {
+        $cachetComponent = $cachetComponents->getComponent($componentId);
+        if (empty($cachetComponent['data']['id'])) {
+            write("[Component] Skipping rules checks for Component $componentId because it could not be found in Cachet.");
+            continue;
         }
+        $cachetStatus    = (int)$component['data']['status'];
+        $newComponentStatus = 0;
+        foreach ($rule as $checkId => $status) {
+            $pingdomCheck = array_filter($pingdomChecks, function ($map) use ($checkId) {
+                return $map['id'] == $checkId;
+            });
+            if (empty($pingdomCheck)) {
+                write("[Component] Skipping Pingdom check because the Pingdom check $checkId could not be found.");
+                continue;
+            }
+            $pingdomStatus = reset($pingdomCheck)['status'] == 'down' ? $status : 1;
+            $newComponentStatus = max($newComponentStatus, $pingdomStatus);
+        }
+        if ($cachetStatus === $newComponentStatus) {
+            write("[Component] Skipping update because the status in Cachet is already equal.");
+            continue;
+        }
+
+        write("[Component] Updating Cachet Component $checkId with status $newComponentStatus");
+
+        $cachetComponents->updateComponent($componentId, [
+            'status' => $newComponentStatus,
+        ]);
     }
 } else {
     write('[Component] Section skipped since no (valid) mapping was found.');
