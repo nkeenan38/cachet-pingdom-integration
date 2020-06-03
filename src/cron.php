@@ -83,7 +83,7 @@ if (!empty($componentRules)) {
             write("[Component] Skipping rules checks for Component $componentId because it could not be found in Cachet.");
             continue;
         }
-        $cachetStatus    = (int)$component['data']['status'];
+        $cachetStatus    = (int)$cachetComponent['data']['status'];
         $newComponentStatus = 0;
         foreach ($rule as $checkId => $status) {
             $pingdomCheck = array_filter($pingdomChecks, function ($map) use ($checkId) {
